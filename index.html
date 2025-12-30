@@ -209,6 +209,13 @@
         .alert-info {
             background: #e3f2fd;
             color: #1565c0;
+            border-left-color: #1565c0;
+        }
+
+        .alert-success {
+            background: #c8e6c9;
+            color: #2e7d32;
+            border-left-color: #2e7d32;
         }
 
         @media (max-width: 768px) {
@@ -227,6 +234,8 @@
             <h1>📊 Trade Journal Pro</h1>
             <p>تسجيل وتحليل صفقات الذهب والفضة</p>
         </div>
+
+        <div id="status-message" style="display: none;"></div>
 
         <div class="tabs">
             <button class="tab-btn active" onclick="switchTab('new-trade', this)">صفقة جديدة ➕</button>
@@ -388,9 +397,37 @@
     </div>
 
     <script>
-        let trades = JSON.parse(localStorage.getItem('trades')) || [];
+        let trades = [];
 
-        // Set current date/time
+        function loadTrades() {
+            try {
+                const stored = localStorage.getItem('trades');
+                if (stored) {
+                    trades = JSON.parse(stored);
+                    console.log('✅ تم تحميل ' + trades.length + ' صفقة');
+                }
+            } catch(e) {
+                console.error('❌ خطأ:', e);
+                trades = [];
+            }
+        }
+
+        function saveTrades() {
+            try {
+                localStorage.setItem('trades', JSON.stringify(trades));
+                console.log('✅ تم الحفظ بنجاح');
+                return true;
+            } catch(e) {
+                console.error('❌ خطأ في الحفظ:', e);
+                return false;
+            }
+        }
+
+        window.addEventListener('load', function() {
+            loadTrades();
+            updateStats();
+        });
+
         document.getElementById('dateTime').valueAsDate = new Date();
 
         function switchTab(tabName, btn) {
@@ -423,12 +460,13 @@
             };
 
             trades.push(trade);
-            localStorage.setItem('trades', JSON.stringify(trades));
-            alert('✅ تم حفظ الصفقة!');
-            this.reset();
-            document.getElementById('dateTime').valueAsDate = new Date();
-            renderTrades();
-            updateStats();
+            if (saveTrades()) {
+                alert('✅ تم حفظ الصفقة!');
+                this.reset();
+                document.getElementById('dateTime').valueAsDate = new Date();
+                renderTrades();
+                updateStats();
+            }
         });
 
         function renderTrades() {
@@ -456,7 +494,7 @@
         function deleteTrade(id) {
             if (confirm('حذف الصفقة؟')) {
                 trades = trades.filter(t => t.id !== id);
-                localStorage.setItem('trades', JSON.stringify(trades));
+                saveTrades();
                 renderTrades();
                 updateStats();
             }
@@ -476,9 +514,6 @@
             document.getElementById('gold-count').textContent = gold;
             document.getElementById('silver-count').textContent = silver;
         }
-
-        // عرض الإحصائيات عند فتح الصفحة
-        updateStats();
     </script>
 </body>
-</html>
+    </html>
