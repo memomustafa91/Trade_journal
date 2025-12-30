@@ -154,7 +154,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyDYp3EN5vAWDv2vhRqRZz2W4pJ8OVSU0bY",
@@ -167,30 +167,46 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
-
 let trades = [];
 
 async function loadTrades() {
-    const snapshot = await getDocs(collection(db, "trades"));
-    trades = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    renderTrades();
-    updateStats();
+    try {
+        const snapshot = await getDocs(collection(db, "trades"));
+        trades = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        console.log('✅ تم تحميل الصفقات:', trades.length);
+        renderTrades();
+        updateStats();
+    } catch(error) {
+        console.error('❌ خطأ في التحميل:', error);
+        alert('خطأ في التحميل: ' + error.message);
+    }
 }
 
 async function saveTrade(trade) {
-    const docRef = await addDoc(collection(db, "trades"), trade);
-    trade.id = docRef.id;
-    trades.push(trade);
-    renderTrades();
-    updateStats();
+    try {
+        console.log('جاري الحفظ...', trade);
+        const docRef = await addDoc(collection(db, "trades"), trade);
+        console.log('✅ تم الحفظ بنجاح! ID:', docRef.id);
+        trade.id = docRef.id;
+        trades.push(trade);
+        renderTrades();
+        updateStats();
+    } catch(error) {
+        console.error('❌ خطأ في الحفظ:', error);
+        throw error;
+    }
 }
 
 async function deleteTradeHandler(id) {
     if (confirm('حذف الصفقة؟')) {
-        await deleteDoc(doc(db, "trades", id));
-        trades = trades.filter(t => t.id !== id);
-        renderTrades();
-        updateStats();
+        try {
+            await deleteDoc(doc(db, "trades", id));
+            trades = trades.filter(t => t.id !== id);
+            renderTrades();
+            updateStats();
+        } catch(error) {
+            console.error('❌ خطأ في الحذف:', error);
+        }
     }
 }
 
@@ -229,25 +245,34 @@ function switchTabHandler(tabName, btn) {
 
 document.getElementById('tradeForm').addEventListener('submit', async function(e){
     e.preventDefault();
-    const conditions=Array.from(document.querySelectorAll('input[type="checkbox"]:checked')).map(c=>c.value);
-    const trade={
-        dateTime:document.getElementById('dateTime').value,
-        tool:document.getElementById('tool').value,
-        type:document.getElementById('type').value,
-        entry:parseFloat(document.getElementById('entry').value),
-        target:parseFloat(document.getElementById('target').value),
-        stop:parseFloat(document.getElementById('stop').value),
-        lot:parseFloat(document.getElementById('lot').value),
-        conditions:conditions,
-        notes:document.getElementById('notes').value
-    };
-    await saveTrade(trade);
-    alert('✅ تم حفظ الصفقة!');
-    this.reset();
-    document.getElementById('dateTime').valueAsDate=new Date();
+    try {
+        const conditions=Array.from(document.querySelectorAll('input[type="checkbox"]:checked')).map(c=>c.value);
+        const trade={
+            dateTime:document.getElementById('dateTime').value,
+            tool:document.getElementById('tool').value,
+            type:document.getElementById('type').value,
+            entry:parseFloat(document.getElementById('entry').value),
+            target:parseFloat(document.getElementById('target').value),
+            stop:parseFloat(document.getElementById('stop').value),
+            lot:parseFloat(document.getElementById('lot').value),
+            conditions:conditions,
+            notes:document.getElementById('notes').value
+        };
+        await saveTrade(trade);
+        alert('✅ تم حفظ الصفقة!');
+        this.reset();
+        document.getElementById('dateTime').valueAsDate=new Date();
+    } catch(error) {
+        console.error('خطأ:', error);
+        alert('❌ خطأ: ' + error.message);
+    }
 });
 
-window.addEventListener('load',()=>{document.getElementById('dateTime').valueAsDate=new Date();loadTrades();});
+window.addEventListener('load',()=>{
+    console.log('تهيئة التطبيق...');
+    document.getElementById('dateTime').valueAsDate=new Date();
+    loadTrades();
+});
 
 window.switchTab = switchTabHandler;
 window.deleteTrade = deleteTradeHandler;
