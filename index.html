@@ -55,7 +55,6 @@
         <button class="tab-btn" onclick="switchTab('stats', this)">الإحصائيات 📈</button>
     </div>
 
-    <!-- Tab 1: New Trade -->
     <div id="new-trade" class="tab-content active">
         <div class="alert alert-info">💡 سجل كل صفقة بدقة - المراقبة الصارمة هي طريق التحسن</div>
         <form id="tradeForm">
@@ -126,7 +125,6 @@
         </form>
     </div>
 
-    <!-- Tab 2: Trades List -->
     <div id="trades" class="tab-content">
         <h2>📋 الصفقات المسجلة</h2>
         <div style="overflow-x:auto;">
@@ -143,7 +141,6 @@
         </div>
     </div>
 
-    <!-- Tab 3: Statistics -->
     <div id="stats" class="tab-content">
         <h2>📈 إحصائياتك</h2>
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:15px;">
@@ -173,7 +170,6 @@ const db = getFirestore(app);
 
 let trades = [];
 
-// تحميل الصفقات من Firestore
 async function loadTrades() {
     const snapshot = await getDocs(collection(db, "trades"));
     trades = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -181,7 +177,6 @@ async function loadTrades() {
     updateStats();
 }
 
-// حفظ صفقة
 async function saveTrade(trade) {
     const docRef = await addDoc(collection(db, "trades"), trade);
     trade.id = docRef.id;
@@ -190,8 +185,7 @@ async function saveTrade(trade) {
     updateStats();
 }
 
-// حذف صفقة
-async function deleteTrade(id) {
+async function deleteTradeHandler(id) {
     if (confirm('حذف الصفقة؟')) {
         await deleteDoc(doc(db, "trades", id));
         trades = trades.filter(t => t.id !== id);
@@ -200,16 +194,14 @@ async function deleteTrade(id) {
     }
 }
 
-// تحديث الإحصائيات
 function updateStats() {
     document.getElementById('total-trades').textContent = trades.length;
-    const avgCond = trades.length>0 ? (trades.reduce((s,t)=>s+t.conditions.length,0)/trades.length).toFixed(1) : 0;
+    const avgCond = trades.length>0 ? (trades.reduce((s,t)=>s+(t.conditions?.length || 0),0)/trades.length).toFixed(1) : 0;
     document.getElementById('avg-conditions').textContent = avgCond;
     document.getElementById('gold-count').textContent = trades.filter(t=>t.tool.includes('XAUUSD')).length;
     document.getElementById('silver-count').textContent = trades.filter(t=>t.tool.includes('XAGUSD')).length;
 }
 
-// عرض الصفقات في الجدول
 function renderTrades() {
     const tbody=document.getElementById('tradesList');
     if(trades.length===0){tbody.innerHTML='<tr><td colspan="9" style="text-align:center;color:#999;">لا توجد صفقات</td></tr>';return;}
@@ -222,13 +214,12 @@ function renderTrades() {
             <td>${t.entry.toFixed(2)}</td>
             <td>${t.target.toFixed(2)}</td>
             <td>${t.stop.toFixed(2)}</td>
-            <td>${t.conditions.length}/10</td>
+            <td>${(t.conditions?.length || 0)}/10</td>
             <td><button class="btn btn-danger" onclick="deleteTrade('${t.id}')">حذف</button></td>
         </tr>`).join('');
 }
 
-// التبويبات
-function switchTab(tabName, btn) {
+function switchTabHandler(tabName, btn) {
     document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
     document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
     document.getElementById(tabName).classList.add('active');
@@ -236,7 +227,6 @@ function switchTab(tabName, btn) {
     if(tabName==='stats') updateStats();
 }
 
-// حفظ الصفقة عند الضغط
 document.getElementById('tradeForm').addEventListener('submit', async function(e){
     e.preventDefault();
     const conditions=Array.from(document.querySelectorAll('input[type="checkbox"]:checked')).map(c=>c.value);
@@ -257,8 +247,10 @@ document.getElementById('tradeForm').addEventListener('submit', async function(e
     document.getElementById('dateTime').valueAsDate=new Date();
 });
 
-// تهيئة التاريخ
 window.addEventListener('load',()=>{document.getElementById('dateTime').valueAsDate=new Date();loadTrades();});
+
+window.switchTab = switchTabHandler;
+window.deleteTrade = deleteTradeHandler;
 </script>
 </body>
 </html>
